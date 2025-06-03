@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ne Yesem? - Lezzet Keşfi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="module">
+        // Firebase SDK'larını import et ve global bir nesneye ata
+        import { initializeApp as initializeAppFirebase } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth as getAuthFirebase, signInAnonymously as signInAnonymouslyFirebase, signInWithCustomToken as signInWithCustomTokenFirebase, onAuthStateChanged as onAuthStateChangedFirebase } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore as getFirestoreFirebase, doc as docFirebase, getDoc as getDocFirebase, addDoc as addDocFirebase, setDoc as setDocFirebase, updateDoc as updateDocFirebase, deleteDoc as deleteDocFirebase, onSnapshot as onSnapshotFirebase, collection as collectionFirebase, query as queryFirebase, where as whereFirebase, getDocs as getDocsFirebase, serverTimestamp as serverTimestampFirebase } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // import { setLogLevel as setLogLevelFirebase } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"; // setLogLevel için doğru import
+
+        window.firebaseSDK = {
+            initializeApp: initializeAppFirebase,
+            getAuth: getAuthFirebase,
+            signInAnonymously: signInAnonymouslyFirebase,
+            signInWithCustomToken: signInWithCustomTokenFirebase,
+            onAuthStateChanged: onAuthStateChangedFirebase,
+            getFirestore: getFirestoreFirebase,
+            doc: docFirebase,
+            getDoc: getDocFirebase,
+            addDoc: addDocFirebase,
+            setDoc: setDocFirebase,
+            updateDoc: updateDocFirebase,
+            deleteDoc: deleteDocFirebase,
+            onSnapshot: onSnapshotFirebase,
+            collection: collectionFirebase,
+            query: queryFirebase,
+            where: whereFirebase,
+            getDocs: getDocsFirebase,
+            serverTimestamp: serverTimestampFirebase,
+            // setLogLevel: setLogLevelFirebase // setLogLevel'i de ekleyelim
+        };
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: #FFF7ED; /* Daha sıcak bir arka plan */
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .scrollbar-thin::-webkit-scrollbar { width: 5px; height: 5px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #fdba74; border-radius: 10px; } /* orange-300 */
+        .scrollbar-thumb-orange-300::-webkit-scrollbar-thumb { background: #fed7aa; }
+        .scrollbar-track-orange-100::-webkit-scrollbar-track { background: #fff7ed; }
+        .scrollbar-thumb-yellow-300::-webkit-scrollbar-thumb { background: #fde68a; }
+        .scrollbar-track-yellow-100::-webkit-scrollbar-track { background: #fefce8; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade-in { animation: fadeIn 0.7s ease-out forwards; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
+        .animation-delay-200 { animation-delay: 0.2s; }
+        .animation-delay-400 { animation-delay: 0.4s; }
+
+        .prose strong { font-weight: bold; }
+        .prose em { font-style: italic; }
+        .prose ul { list-style-type: disc; margin-left: 1.5rem; padding-left: 1rem;}
+        .prose ol { list-style-type: decimal; margin-left: 1.5rem; padding-left: 1rem;}
+        .prose a { color: #f97316; text-decoration: underline; }
+        .prose a:hover { color: #ea580c; }
+        .prose h1, .prose h2, .prose h3, .prose h4 { margin-bottom: 0.5em; margin-top: 1em;}
+        .prose p { margin-bottom: 1em; }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { 
+            initializeApp, 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged,
+            getFirestore,
+            doc,
+            getDoc,
+            addDoc,
+            setDoc,
+            updateDoc,
+            deleteDoc,
+            onSnapshot,
+            collection,
+            query,
+            where,
+            getDocs,
+            serverTimestamp,
+            // setLogLevel // Bu global scope'ta olmayabilir, doğrudan firebaseSDK.setLogLevel kullanılacak
+        } = window.firebaseSDK || {}; 
+
+        var __firebase_config = JSON.stringify({
+            apiKey: "YOUR_API_KEY", // !! GERÇEK API ANAHTARINIZI BURAYA GİRİN !!
+            authDomain: "YOUR_AUTH_DOMAIN", 
+            projectId: "YOUR_PROJECT_ID", 
+            storageBucket: "YOUR_STORAGE_BUCKET", 
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID" // !! GERÇEK APP ID'NİZİ BURAYA GİRİN !!
+        });
+        var __initial_auth_token = undefined; 
+        var __app_id = 'ne-yesem-web'; 
+
+        const { useState, useEffect, createContext, useContext, useRef } = React;
+
+        const FirebaseContext = createContext(null);
+
+        const FirebaseProvider = ({ children }) => {
+          const [db, setDb] = useState(null);
+          const [auth, setAuth] = useState(null);
+          const [userId, setUserId] = useState(null);
+          const [isAuthReady, setIsAuthReady] = useState(false); 
+
+          useEffect(() => {
+            if (!window.firebaseSDK || !window.firebaseSDK.initializeApp) {
+                console.error("Firebase SDK yüklenemedi. Lütfen internet bağlantınızı ve script etiketlerini kontrol edin.");
+                setIsAuthReady(true); 
+                return;
+            }
+            // const { setLogLevel: setFirebaseLogLevel } = window.firebaseSDK; // setLogLevel'i SDK'dan al
+            // if (setFirebaseLogLevel) {
+            //    setFirebaseLogLevel('debug'); // Firebase debug loglarını etkinleştir
+            // } else {
+            //    console.warn("setLogLevel Firebase SDK'da bulunamadı.");
+            // }
+
+
+            try {
+              const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+              if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") {
+                console.warn("Firebase API anahtarı yapılandırılmamış. Lütfen __firebase_config içine geçerli bir anahtar girin. Firebase özellikleri çalışmayacaktır.");
+                setIsAuthReady(true);
+                return; 
+              }
+              const app = initializeApp(firebaseConfig);
+              const firestore = getFirestore(app);
+              const authentication = getAuth(app);
+
+              setDb(firestore);
+              setAuth(authentication);
+              
+              const unsubscribe = onAuthStateChanged(authentication, async (user) => {
+                if (user) {
+                  setUserId(user.uid);
+                } else {
+                  if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    try {
+                      await signInWithCustomToken(authentication, __initial_auth_token);
+                    } catch (error) {
+                      console.error("Özel token ile giriş yapılamadı:", error);
+                      try {
+                        await signInAnonymously(authentication);
+                      } catch (anonError) {
+                        console.error("Anonim giriş yapılamadı:", anonError);
+                        setUserId(crypto.randomUUID()); 
+                      }
+                    }
+                  } else {
+                    try {
+                      await signInAnonymously(authentication);
+                    } catch (error) {
+                      console.error("Anonim giriş yapılamadı:", error);
+                      setUserId(crypto.randomUUID());
+                    }
+                  }
+                }
+              
+                if (!authentication.currentUser && !user) {
+                    setUserId(prevUserId => prevUserId || crypto.randomUUID());
+                } else if (authentication.currentUser) {
+                    setUserId(authentication.currentUser.uid);
+                }
+                setIsAuthReady(true); 
+              });
+
+              return () => unsubscribe(); 
+            } catch (error) {
+              console.error("Firebase başlatılırken hata oluştu:", error);
+              setIsAuthReady(true); 
+            }
+          }, []);
+
+          return (
+            <FirebaseContext.Provider value={{ db, auth, userId, isAuthReady }}>
+              {children}
+            </FirebaseContext.Provider>
+          );
+        };
+
+        const PrivacyPolicyScreen = ({ onAccept, language }) => {
+            const privacyTextTr = `Uygulamamızı kullanarak gizlilik politikamızı kabul etmiş olursunuz. Kişisel verilerinizi korumaya ve şeffaf olmaya kararlıyız. Uygulama, kullanıcı deneyimini iyileştirmek ve kişiselleştirilmiş öneriler sunmak amacıyla bazı verileri anonim olarak toplayabilir. Bu veriler üçüncü taraflarla paylaşılmaz. Daha fazla bilgi için lütfen <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" class="text-orange-600 hover:text-orange-800 underline">Google Gizlilik Politikası</a>'nı okuyun.`;
+            const privacyTextEn = `By using our application, you agree to our privacy policy. We are committed to protecting your personal data and being transparent. The application may collect some data anonymously to improve user experience and provide personalized recommendations. This data is not shared with third parties. For more information, please read the <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" class="text-orange-600 hover:text-orange-800 underline">Google Privacy Policy</a>.`;
+
+            return (
+                <div className="fixed inset-0 bg-gradient-to-br from-red-500 via-orange-400 to-yellow-300 flex items-center justify-center z-[100] p-4">
+                    <div className="bg-white bg-opacity-95 rounded-2xl shadow-2xl p-6 sm:p-8 max-w-lg w-full text-center transform transition-all duration-500 animate-fade-in-up">
+                        <h2 className="text-2xl sm:text-3xl font-bold text-orange-600 mb-4">
+                            {language === 'tr' ? 'Gizlilik Politikası' : 'Privacy Policy'}
+                        </h2>
+                        <p 
+                            className="text-sm sm:text-base text-gray-700 mb-6 text-left leading-relaxed"
+                            dangerouslySetInnerHTML={{ __html: language === 'tr' ? privacyTextTr : privacyTextEn }}
+                        />
+                        <button
+                            onClick={onAccept}
+                            className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white px-8 py-3 rounded-full text-lg font-bold shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:scale-105 hover:from-orange-600 hover:to-red-600"
+                        >
+                            {language === 'tr' ? 'Kabul Ediyorum ve Devam Et' : 'Accept and Continue'}
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const Splash = ({ onStartApp, setLanguage, language, isLoading = false, loadingTextOverride = null }) => { 
+          const canvasRef = useRef(null);
+          const emojis = ['🍕', '🍔', '🍟', '🍣', '🍜', '🍩', '🍦', '🍎', '🥕', '🍞', ' ', '🥗', '🍰']; 
+          const [foodItems, setFoodItems] = useState([]);
+          const [showAboutModal, setShowAboutModal] = useState(false); 
+
+          useEffect(() => {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            const setCanvasDimensions = () => {
+              canvas.width = window.innerWidth;
+              canvas.height = window.innerHeight;
+            };
+            setCanvasDimensions();
+            window.addEventListener('resize', setCanvasDimensions);
+
+            const createFoodItem = () => ({
+              x: Math.random() * canvas.width,
+              y: -150 - Math.random() * 400, 
+              emoji: emojis[Math.floor(Math.random() * emojis.length)],
+              speed: 0.7 + Math.random() * 1.2, 
+              opacity: 1,
+              scale: 0.8 + Math.random() * 0.4, 
+              rotation: Math.random() * Math.PI * 2, 
+              rotationSpeed: (Math.random() - 0.5) * 0.015, 
+              hit: false, 
+              hitProgress: 0 
+            });
+
+            const initialFoodCount = Math.min(50, Math.floor(window.innerWidth / 28)); 
+            const initialFoodItems = Array.from({ length: initialFoodCount }).map(createFoodItem);
+            setFoodItems(initialFoodItems);
+
+            let animationFrameId;
+
+            const animate = () => {
+              if (!canvasRef.current) return; 
+              const currentCanvas = canvasRef.current;
+              ctx.clearRect(0, 0, currentCanvas.width, currentCanvas.height); 
+
+              setFoodItems(prevItems => {
+                return prevItems.map(item => {
+                  if (item.hit) {
+                    item.hitProgress += 0.08; 
+                    item.opacity -= 0.06; 
+                    item.scale += 0.35; 
+                    item.rotation += item.rotationSpeed * 6; 
+                    if (item.opacity <= 0) {
+                      return createFoodItem(); 
+                    }
+                  } else {
+                    item.y += item.speed; 
+                    item.rotation += item.rotationSpeed;
+                    if (item.y > currentCanvas.height + 70) { 
+                      return createFoodItem(); 
+                    }
+                  }
+
+                  ctx.save();
+                  ctx.globalAlpha = item.opacity;
+                  ctx.font = `${50 * item.scale}px Arial`; 
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'middle';
+                  ctx.translate(item.x, item.y);
+                  ctx.rotate(item.rotation);
+                  ctx.fillText(item.emoji, 0, 0);
+                  ctx.restore();
+
+                  return item;
+                });
+              });
+
+              animationFrameId = requestAnimationFrame(animate);
+            };
+
+            animate();
+
+            return () => {
+              cancelAnimationFrame(animationFrameId);
+              window.removeEventListener('resize', setCanvasDimensions);
+            };
+          }, []); 
+
+          const handleBackgroundClick = (event) => {
+            if (isLoading || showAboutModal) return;
+
+            const contentBox = document.querySelector('.splash-content-box');
+            const languageSelect = document.querySelector('.language-select');
+            const aboutButton = document.querySelector('.about-button');
+            
+            if (
+                (contentBox && contentBox.contains(event.target)) ||
+                (languageSelect && languageSelect.contains(event.target)) ||
+                (aboutButton && aboutButton.contains(event.target))
+            ) {
+              return;
+            }
+
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            setFoodItems(prevItems => {
+              let soundPlayed = false;
+              return prevItems.map(item => {
+                const emojiRenderedSize = 50 * item.scale; 
+                const distance = Math.sqrt(Math.pow(x - item.x, 2) + Math.pow(y - item.y, 2));
+                if (!item.hit && distance < emojiRenderedSize / 1.5) { 
+                  if (!soundPlayed) { 
+                    soundPlayed = true;
+                  }
+                  return { ...item, hit: true, opacity: 1, scale: item.scale * 1.2, hitProgress: 0 }; 
+                }
+                return item;
+              });
+            });
+          };
+
+          const aboutTextTr = "Bu uygulama, 'Bugün ne yesem?' diye düşündüğünüzde size yardımcı olmak için tasarlanmıştır. Hızlıca yemek veya tatlı önerileri alabilir, Akıllı Asistan özelliği ile elinizdeki malzemelerle tarifler oluşturabilir, yemekler için malzeme alternatifleri bulabilir veya belirli bir temaya göre yemek fikirleri edinebilirsiniz.";
+          const aboutTextEn = "This application is designed to help you when you're wondering 'What should I eat today?'. You can quickly get food or dessert suggestions, and with the Smart Assistant feature, you can generate recipes with the ingredients you have, find ingredient alternatives for dishes, or get meal ideas based on a specific theme.";
+
+
+          const currentLoadingText = loadingTextOverride || (language === 'tr' ? 'Yükleniyor...' : 'Loading...');
+
+          return (
+            <div 
+                className="relative flex items-center justify-center min-h-screen bg-gradient-to-br from-red-500 via-orange-400 to-yellow-300 p-4 animate-fade-in overflow-hidden" 
+                onClick={handleBackgroundClick}
+            >
+              <canvas ref={canvasRef} className="absolute inset-0 z-0"></canvas> 
+              
+              {isLoading ? (
+                <div className="relative z-10 text-white text-4xl font-bold animate-pulse drop-shadow-lg">
+                  {currentLoadingText}
+                </div>
+              ) : (
+                <>
+                  <div className="absolute top-4 right-4 z-20 flex flex-col items-end space-y-3"> 
+                    <select
+                      value={language}
+                      onChange={(e) => {
+                        if (setLanguage) setLanguage(e.target.value);
+                      }}
+                      className="language-select bg-white/80 backdrop-blur-sm rounded-full px-5 py-2.5 text-gray-800 font-semibold shadow-lg hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all duration-200"
+                    >
+                      <option value="tr">Türkçe</option>
+                      <option value="en">English</option>
+                    </select>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setShowAboutModal(true);}}
+                        className="about-button bg-white/80 backdrop-blur-sm text-orange-600 px-5 py-2.5 rounded-full font-semibold shadow-lg hover:bg-white/90 hover:text-orange-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    >
+                        {language === 'tr' ? 'Hakkında' : 'About'}
+                    </button>
+                  </div>
+
+                  {showAboutModal && (
+                    <div 
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-30 p-4 animate-fade-in" 
+                        onClick={(e) => { e.stopPropagation(); setShowAboutModal(false);}} 
+                    >
+                      <div 
+                        className="about-modal-content bg-white rounded-xl shadow-2xl p-6 sm:p-8 max-w-md w-full text-left transform transition-all duration-300 animate-fade-in-up"
+                        onClick={(e) => e.stopPropagation()} 
+                      >
+                        <h3 className="text-2xl font-bold text-orange-600 mb-4">
+                          {language === 'tr' ? 'Uygulama Hakkında' : 'About The Application'}
+                        </h3>
+                        <p className="text-gray-700 mb-6 leading-relaxed">
+                          {language === 'tr' ? aboutTextTr : aboutTextEn}
+                        </p>
+                        <button
+                          onClick={() => setShowAboutModal(false)}
+                          className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-2.5 rounded-lg hover:from-orange-600 hover:to-red-600 transition-all duration-200 font-semibold"
+                        >
+                          {language === 'tr' ? 'Kapat' : 'Close'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="splash-content-box relative bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-6 sm:p-10 text-center max-w-lg w-full transform transition-all duration-500 hover:scale-[1.03] z-10"> 
+                    <h1 className="text-4xl sm:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 mb-4 sm:mb-6 drop-shadow-sm">
+                      {language === 'tr' ? 'Ne Yesem?' : 'What to Eat?'}
+                    </h1>
+                    <p className="text-6xl sm:text-8xl mb-4 sm:mb-6 animate-bounce-scale">
+                      🍕
+                    </p>
+                    <div className="text-lg sm:text-xl text-gray-800 font-semibold mb-6 sm:mb-10 leading-relaxed">
+                      {language === 'tr' ? (
+                        <>Aç mısın? Ne yiyeceğine karar veremiyor musun? <br/> En lezzetli kararları birlikte verelim!</>
+                      ) : (
+                        <>Hungry? Can't decide what to eat? <br/> Let's make the most delicious decisions together!</>
+                      )}
+                    </div>
+                    <button
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if(onStartApp) onStartApp(); 
+                      }}
+                      className="bg-gradient-to-r from-orange-500 to-red-600 text-white px-10 py-4 sm:px-12 sm:py-5 rounded-full text-xl sm:text-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95"
+                    >
+                      {language === 'tr' ? 'Lezzet Yolculuğuna Başla!' : 'Start the Flavor Journey!'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        };
+
+        // Ana uygulama bileşeni
+        function App() {
+          const [currentPage, setCurrentPage] = useState('home'); 
+          const [showSplash, setShowSplash] = useState(true); 
+          const [language, setLanguage] = useState('tr'); 
+          const { db, userId, isAuthReady } = useContext(FirebaseContext); 
+
+          const [showPrivacyPolicyScreen, setShowPrivacyPolicyScreen] = useState(false);
+          const [privacyPolicyChecked, setPrivacyPolicyChecked] = useState(false);
+          const [isAppLoadingAfterSplash, setIsAppLoadingAfterSplash] = useState(false);
+          const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'ne-yesem-web-default'; 
+
+          // Gizlilik politikası kontrolü
+          useEffect(() => {
+            if (isAuthReady && userId && !privacyPolicyChecked && db) {
+              const checkPrivacy = async () => {
+                const privacyDocRef = doc(db, `artifacts/${currentAppId}/users/${userId}/appSettings/privacy`);
+                try {
+                  const docSnap = await getDoc(privacyDocRef);
+                  if (!docSnap.exists() || !docSnap.data().accepted) {
+                    setShowPrivacyPolicyScreen(true);
+                  }
+                } catch (error) {
+                  console.error("Gizlilik politikası okunurken hata:", error);
+                  setShowPrivacyPolicyScreen(true); 
+                } finally {
+                  setPrivacyPolicyChecked(true);
+                }
+              };
+              checkPrivacy();
+            }
+          }, [isAuthReady, userId, privacyPolicyChecked, db, currentAppId]);
+
+          const handleAcceptPrivacy = async () => {
+            if (db && userId) {
+              const privacyDocRef = doc(db, `artifacts/${currentAppId}/users/${userId}/appSettings/privacy`);
+              try {
+                await setDoc(privacyDocRef, { accepted: true, acceptedAt: serverTimestamp() }, { merge: true });
+                setShowPrivacyPolicyScreen(false);
+              } catch (error) {
+                console.error("Gizlilik politikası kaydedilirken hata:", error);
+              }
+            } else {
+                setShowPrivacyPolicyScreen(false);
+                console.warn("DB veya UserID olmadan gizlilik kabul edildi (geçici).");
+            }
+          };
+
+          const handleStartAppLoading = () => {
+            setShowSplash(false); 
+            setIsAppLoadingAfterSplash(true); 
+            setTimeout(() => {
+              setIsAppLoadingAfterSplash(false); 
+            }, 1800); 
+          };
+
+
+          // Yükleme ekranı (Firebase Auth ve Gizlilik Kontrolü için)
+          if (!isAuthReady || (userId && !privacyPolicyChecked)) {
+            return <Splash isLoading={true} language={language} setLanguage={setLanguage} />;
+          }
+
+          // Gizlilik Politikası Ekranı
+          if (showPrivacyPolicyScreen) {
+            return <PrivacyPolicyScreen onAccept={handleAcceptPrivacy} language={language} />;
+          }
+
+          // Ana Açılış Ekranı (Kullanıcı etkileşimli)
+          if (showSplash) {
+            return <Splash onStartApp={handleStartAppLoading} setLanguage={setLanguage} language={language} isLoading={false} />;
+          }
+
+          // "Lezzet Yolculuğuna Başla" sonrası Yükleme Ekranı
+          if (isAppLoadingAfterSplash) {
+            return <Splash isLoading={true} language={language} setLanguage={setLanguage} loadingTextOverride={language === 'tr' ? "Yemek pişiriliyor..." : "Food is cooking..."} />;
+          }
+
+
+          // Ana Uygulama İçeriği
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-red-500 via-orange-400 to-yellow-300 text-gray-800 font-inter flex flex-col items-center p-4">
+              <header className="w-full max-w-4xl bg-white/90 backdrop-blur-md rounded-xl shadow-xl p-4 sm:p-6 mb-6 sm:mb-8 flex flex-col items-center animate-fade-in-up">
+                <h1 className="text-3xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 mb-3 sm:mb-4 drop-shadow-sm">
+                  {language === 'tr' ? 'Ne Yesem?' : 'What to Eat?'}
+                </h1>
+                <p className="text-md sm:text-lg text-gray-700 text-center mb-4 sm:mb-6">
+                  {language === 'tr' ?
+                    'Bugün ne yiyeceğine karar veremiyor musun? Sana yardım edelim!' :
+                    "Can't decide what to eat today? Let us help you!"
+                  }
+                </p>
+                <div className="flex flex-wrap justify-center gap-2 sm:gap-4 w-full">
+                  <button
+                    onClick={() => setCurrentPage('home')}
+                    className={`px-4 py-2 sm:px-6 sm:py-3 rounded-full font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 text-sm sm:text-base shadow-md hover:shadow-lg
+                      ${currentPage === 'home' ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-orange-100 hover:text-orange-700'}`}
+                  >
+                    {language === 'tr' ? 'Ana Sayfa' : 'Home'}
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage('smartAssistant')}
+                    className={`px-4 py-2 sm:px-6 sm:py-3 rounded-full font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 text-sm sm:text-base shadow-md hover:shadow-lg
+                      ${currentPage === 'smartAssistant' ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-orange-100 hover:text-orange-700'}`}
+                  >
+                    {language === 'tr' ? 'Akıllı Asistan ✨' : 'Smart Assistant ✨'}
+                  </button>
+                  {!showSplash && ( 
+                    <button
+                      onClick={() => {
+                          setShowSplash(true); 
+                      }}
+                      className="px-4 py-2 sm:px-6 sm:py-3 rounded-full font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 bg-red-500 text-white shadow-md hover:shadow-lg hover:bg-red-600"
+                    >
+                      {language === 'tr' ? 'Geri Dön' : 'Go Back'}
+                    </button>
+                  )}
+                </div>
+              </header>
+
+              <main className="w-full max-w-4xl bg-white/90 backdrop-blur-md rounded-xl shadow-xl p-4 sm:p-8 animate-fade-in-up animation-delay-200">
+                {currentPage === 'home' && <HomePage language={language} />}
+                {currentPage === 'smartAssistant' && <SmartAssistantPage language={language} />}
+              </main>
+
+              <footer className="w-full max-w-4xl mt-6 sm:mt-8 p-3 sm:p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-lg text-center animate-fade-in-up animation-delay-400">
+                {userId && (
+                  <p className="text-xs sm:text-sm text-gray-600">
+                    {language === 'tr' ? 'Kullanıcı ID:' : 'User ID:'} <span className="font-mono text-xs break-all">{userId}</span>
+                  </p>
+                )}
+              </footer>
+            </div>
+          );
+        }
+
+        // HomePage Bileşeni
+        const HomePage = ({ language }) => {
+          const [budget, setBudget] = useState('');
+          const [time, setTime] = useState('');
+          const [suggestions, setSuggestions] = useState([]); 
+          const [activeSuggestionType, setActiveSuggestionType] = useState(null); 
+          const [showModal, setShowModal] = useState(false);
+          const [modalContent, setModalContent] = useState('');
+
+          const [selectedFoodForRecipe, setSelectedFoodForRecipe] = useState(null);
+          const [generatedRecipe, setGeneratedRecipe] = useState('');
+          const [isGeneratingRecipeView, setIsGeneratingRecipeView] = useState(false); 
+          const [showRecipeModal, setShowRecipeModal] = useState(false);
+
+          const getSuggestionsData = (lang) => ({
+            allSuggestions: [
+                { name: lang === 'tr' ? "Menemen" : "Menemen (Turkish Scrambled Eggs)", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Hızlı ve lezzetli bir kahvaltı veya hafif akşam yemeği." : "A quick and delicious breakfast or light dinner." },
+                { name: lang === 'tr' ? "Makarna (Salçalı/Peynirli)" : "Pasta (with Tomato Sauce/Cheese)", location: "home", budget: "0-150 TL", time: "15-30 dk", description: lang === 'tr' ? "Çeşitli soslarla kolayca hazırlanabilir, doyurucu bir öğün." : "Can be easily prepared with various sauces, a filling meal." },
+                { name: lang === 'tr' ? "Mercimek Çorbası" : "Lentil Soup", location: "home", budget: "0-150 TL", time: "30+ dk", description: lang === 'tr' ? "Besleyici ve doyurucu bir başlangıç veya hafif ana yemek." : "A nutritious and filling starter or light main course." },
+                { name: lang === 'tr' ? "Tavuk Sote (Sebzeli)" : "Chicken Stir-fry (with Vegetables)", location: "home", budget: "150-300 TL", time: "30+ dk", description: lang === 'tr' ? "Yanında pilav veya salata ile harika gider, pratik ve lezzetli." : "Goes great with rice or salad, practical and delicious." },
+                { name: lang === 'tr' ? "Fırında Sebzeli Tavuk Baget" : "Oven-baked Chicken Drumsticks with Vegetables", location: "home", budget: "150-300 TL", time: "30+ dk", description: lang === 'tr' ? "Sağlıklı ve pratik bir ana yemek, fırında kolayca pişer." : "A healthy and practical main course, easily baked in the oven." },
+                { name: lang === 'tr' ? "Omlet (Peynirli/Sebzeli)" : "Omelette (with Cheese/Vegetables)", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Hızlıca hazırlanabilen protein deposu, kahvaltı veya hafif öğün için ideal." : "A quick protein source, ideal for breakfast or a light meal." },
+                { name: lang === 'tr' ? "Tost (Kaşarlı/Karışık)" : "Grilled Cheese Sandwich (Turkish Style/Mixed)", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Pratik ve hızlı bir atıştırmalık veya kahvaltı." : "A practical and quick snack or breakfast." },
+                { name: lang === 'tr' ? "Nohut Yemeği" : "Chickpea Stew", location: "home", budget: "0-150 TL", time: "30+ dk", description: lang === 'tr' ? "Geleneksel ve besleyici bir ev yemeği, yanında pilavla iyi gider." : "A traditional and nutritious home-cooked meal, goes well with rice." },
+                { name: lang === 'tr' ? "Pancake (Meyveli/Çikolatalı)" : "Pancakes (with Fruit/Chocolate)", location: "home", budget: "0-150 TL", time: "15-30 dk", description: lang === 'tr' ? "Tatlı veya tuzlu olarak tüketilebilir, kahvaltı veya atıştırmalık." : "Can be consumed sweet or savory, for breakfast or snack." },
+                { name: lang === 'tr' ? "Krep (Peynirli/Nutellalı)" : "Crepes (with Cheese/Nutella)", location: "home", budget: "0-150 TL", time: "15-30 dk", description: lang === 'tr' ? "Çeşitli iç harçlarla hazırlanabilir, pratik ve lezzetli." : "Can be prepared with various fillings, practical and delicious." },
+                { name: lang === 'tr' ? "Ton Balıklı Salata" : "Tuna Salad", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Hafif ve pratik bir öğün, yaz ayları için ideal." : "A light and practical meal, ideal for summer months." },
+                { name: lang === 'tr' ? "Ev Yapımı Pizza (Pratik)" : "Homemade Pizza (Quick)", location: "home", budget: "150-300 TL", time: "30+ dk", description: lang === 'tr' ? "Kendi pizzanı kendin yap! Hazır tabanla daha hızlı." : "Make your own pizza! Faster with a ready-made base." },
+                { name: lang === 'tr' ? "Karnıyarık" : "Karniyarik (Stuffed Eggplant)", location: "home", budget: "150-300 TL", time: "30+ dk", description: lang === 'tr' ? "Türk mutfağının sevilen lezzetlerinden, doyurucu bir ana yemek." : "One of the beloved dishes of Turkish cuisine, a filling main course." },
+                { name: lang === 'tr' ? "Köfte Patates Kızartması" : "Meatballs and French Fries", location: "home", budget: "150-300 TL", time: "15-30 dk", description: lang === 'tr' ? "Klasik ve doyurucu bir ikili, çocukların da favorisi." : "A classic and satisfying duo, also a favorite of children." },
+                { name: lang === 'tr' ? "Meyve Tabağı" : "Fruit Platter", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Sağlıklı ve ferahlatıcı bir seçenek, ara öğün için ideal." : "A healthy and refreshing option, ideal for a snack." },
+                { name: lang === 'tr' ? "Hazır Çorba (Eklemelerle)" : "Instant Soup (with Additions)", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Çok hızlı hazırlanabilen sıcak bir başlangıç, kruton veya baharatla zenginleştirilebilir." : "A hot starter that can be prepared very quickly, can be enriched with croutons or spices." },
+                { name: lang === 'tr' ? "Patates Oturtma" : "Layered Potato Bake with Minced Meat", location: "home", budget: "150-300 TL", time: "30+ dk", description: lang === 'tr' ? "Kıymalı veya sebzeli, fırında pişen lezzetli bir ana yemek." : "A delicious main course with minced meat or vegetables, baked in the oven." },
+                { name: lang === 'tr' ? "Tavuklu Pilav" : "Chicken and Rice Pilaf", location: "home", budget: "150-300 TL", time: "30+ dk", description: lang === 'tr' ? "Doyurucu ve pratik, tek tencerede hazırlanabilir." : "Filling and practical, can be prepared in one pot." },
+                { name: lang === 'tr' ? "Yumurtalı Ekmek (French Toast)" : "Eggy Bread (Turkish French Toast)", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Kahvaltı veya hafif bir öğün için ideal, tatlı veya tuzlu." : "Ideal for breakfast or a light meal, sweet or savory." },
+                { name: lang === 'tr' ? "Peynirli Makarna Fırın" : "Baked Macaroni and Cheese", location: "home", budget: "150-300 TL", time: "30+ dk", description: lang === 'tr' ? "Kremalı ve bol peynirli, fırında kızarmış lezzet." : "Creamy and cheesy, baked to golden perfection." },
+                { name: lang === 'tr' ? "Sebzeli Omlet Wrap" : "Vegetable Omelette Wrap", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Hızlı, sağlıklı ve doyurucu bir dürüm alternatifi." : "A quick, healthy, and filling wrap alternative." },
+                { name: lang === 'tr' ? "Patates Salatası" : "Potato Salad", location: "home", budget: "0-150 TL", time: "15-30 dk", description: lang === 'tr' ? "Yan lezzet olarak veya hafif bir öğün olarak tüketilebilir." : "Can be consumed as a side dish or a light meal." },
+                { name: lang === 'tr' ? "Yoğurtlu Semizotu Salatası" : "Purslane Salad with Yogurt", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Ferahlatıcı ve sağlıklı bir yaz salatası." : "A refreshing and healthy summer salad." },
+                { name: lang === 'tr' ? "Kuru Fasulye" : "Kuru Fasulye (Turkish White Bean Stew)", location: "home", budget: "150-300 TL", time: "30+ dk", description: lang === 'tr' ? "Türk mutfağının klasiği, pilavla mükemmel uyum." : "A classic of Turkish cuisine, perfect with rice." },
+                { name: lang === 'tr' ? "Peynir Tabağı ve Kraker" : "Cheese Platter and Crackers", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Hızlı ve şık bir atıştırmalık veya başlangıç." : "A quick and elegant snack or starter." },
+                { name: lang === 'tr' ? "Sosisli Sandviç (Ev Yapımı)" : "Homemade Hot Dog Sandwich", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Pratik ve lezzetli, hızlıca hazırlanır." : "Practical and delicious, prepared quickly." },
+                { name: lang === 'tr' ? "Sucuklu Yumurta" : "Eggs with Sucuk (Turkish Sausage)", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Türk kahvaltısının vazgeçilmezi." : "A staple of Turkish breakfast." },
+                { name: lang === 'tr' ? "Mücver" : "Mucver (Zucchini Fritters)", location: "home", budget: "0-150 TL", time: "15-30 dk", description: lang === 'tr' ? "Sebzeli ve hafif, yoğurtla servis edilebilir." : "Vegetable and light, can be served with yogurt." },
+                { name: lang === 'tr' ? "Fırında Patates Dilimleri" : "Oven-baked Potato Wedges", location: "home", budget: "0-150 TL", time: "30+ dk", description: lang === 'tr' ? "Baharatlı ve lezzetli, ana yemeğin yanında veya atıştırmalık." : "Spicy and delicious, as a side dish or snack." },
+                { name: lang === 'tr' ? "Yoğurtlu Havuç Salatası" : "Carrot Salad with Yogurt", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Hafif ve ferahlatıcı bir meze." : "A light and refreshing appetizer." },
+                { name: lang === 'tr' ? "Közlenmiş Biber Salatası" : "Roasted Pepper Salad", location: "home", budget: "0-150 TL", time: "15-30 dk", description: lang === 'tr' ? "Lezzetli ve pratik bir salata." : "A delicious and practical salad." },
+                { name: lang === 'tr' ? "Peynirli Gözleme (Hazır Yufka)" : "Gozleme with Cheese (Ready Dough)", location: "home", budget: "0-150 TL", time: "15-30 dk", description: lang === 'tr' ? "Hızlıca hazırlanabilen geleneksel lezzet." : "Traditional flavor that can be prepared quickly." },
+                { name: lang === 'tr' ? "Sütlaç" : "Sutlac (Turkish Rice Pudding)", location: "home", budget: "0-150 TL", time: "30+ dk", description: lang === 'tr' ? "Klasik Türk tatlısı." : "Classic Turkish dessert." },
+                { name: lang === 'tr' ? "Kabak Yemeği (Zeytinyağlı)" : "Zucchini Dish (with Olive Oil)", location: "home", budget: "0-150 TL", time: "30+ dk", description: lang === 'tr' ? "Hafif ve sağlıklı bir sebze yemeği." : "A light and healthy vegetable dish." },
+                { name: lang === 'tr' ? "Kuskus Salatası" : "Couscous Salad", location: "home", budget: "0-150 TL", time: "15-30 dk", description: lang === 'tr' ? "Ferahlatıcı ve doyurucu bir salata." : "A refreshing and filling salad." },
+                { name: lang === 'tr' ? "Tavuklu Sandviç" : "Chicken Sandwich", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Hızlı ve pratik bir öğle yemeği alternatifi." : "A quick and practical lunch alternative." },
+                { name: lang === 'tr' ? "Ezogelin Çorbası" : "Ezogelin Soup", location: "home", budget: "0-150 TL", time: "30+ dk", description: lang === 'tr' ? "Acılı ve doyurucu Türk çorbası." : "Spicy and filling Turkish soup." },
+                { name: lang === 'tr' ? "Peynirli Poğaça (Hazır Hamur)" : "Pogaca with Cheese (Ready Dough)", location: "home", budget: "0-150 TL", time: "15-30 dk", description: lang === 'tr' ? "Çay saatleri için pratik atıştırmalık." : "Practical snack for tea time." },
+                { name: lang === 'tr' ? "Patatesli Yumurta" : "Eggs with Potatoes", location: "home", budget: "0-150 TL", time: "15-30 dk", description: lang === 'tr' ? "Doyurucu ve lezzetli bir kahvaltı." : "A filling and delicious breakfast." },
+                { name: lang === 'tr' ? "Sıcak Sandviç (Sucuklu/Salamlı)" : "Hot Sandwich (with Sucuk/Salami)", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Hızlı ve lezzetli bir atıştırmalık." : "A quick and delicious snack." },
+            ],
+            allDessertSuggestions: [
+                { name: lang === 'tr' ? "Sufle (Ev Yapımı)" : "Soufflé (Homemade)", location: "home", budget: "0-150 TL", time: "30+ dk", description: lang === 'tr' ? "Akışkan çikolatalı, pratik ve lezzetli." : "Molten chocolate, practical and delicious." },
+                { name: lang === 'tr' ? "Brownie (Hazır Karışım)" : "Brownies (from Mix)", location: "home", budget: "0-150 TL", time: "30+ dk", description: lang === 'tr' ? "Hızlıca hazırlanabilen, çikolata sevenler için." : "Quick to prepare, for chocolate lovers." },
+                { name: lang === 'tr' ? "Muzlu Sütlaç" : "Banana Rice Pudding", location: "home", budget: "0-150 TL", time: "30+ dk", description: lang === 'tr' ? "Klasik sütlaca farklı bir dokunuş." : "A twist on classic rice pudding." },
+                { name: lang === 'tr' ? "Meyveli Yoğurt" : "Fruity Yogurt", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Hafif ve sağlıklı bir tatlı alternatifi." : "A light and healthy dessert alternative." },
+                { name: lang === 'tr' ? "Puding (Hazır)" : "Pudding (Instant)", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Çok hızlı hazırlanabilen klasik bir tatlı." : "A classic dessert that can be prepared very quickly." },
+                { name: lang === 'tr' ? "Elmalı Kurabiye" : "Apple Cookies", location: "home", budget: "0-150 TL", time: "30+ dk", description: lang === 'tr' ? "Çay saatleri için vazgeçilmez lezzet." : "An indispensable treat for tea time." },
+                { name: lang === 'tr' ? "Dondurma (Hazır)" : "Ice Cream (Store-bought)", location: "home", budget: "0-150 TL", time: "5-15 dk", description: lang === 'tr' ? "Serinletici ve pratik bir tatlı." : "A refreshing and practical dessert." },
+            ]
+          });
+          
+          // Dil değiştikçe öneri listelerini güncellemek için useEffect
+          useEffect(() => {
+            if (activeSuggestionType === 'food' && suggestions.length > 0) {
+                handleGetSuggestions();
+            } else if (activeSuggestionType === 'dessert' && suggestions.length > 0) {
+                handleGetDessertSuggestions();
+            }
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+          }, [language]); 
+
+          // Component ilk yüklendiğinde varsayılan önerileri göster
+          useEffect(() => {
+            const initialSuggestionsData = getSuggestionsData(language).allSuggestions;
+            const shuffled = [...initialSuggestionsData].sort(() => 0.5 - Math.random());
+            const initialToShow = shuffled.slice(0, 3); 
+            setSuggestions(initialToShow);
+            setActiveSuggestionType('food');
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+          }, []); 
+
+
+          const handleGetSuggestions = () => {
+            let currentAllSuggestions = getSuggestionsData(language).allSuggestions;
+            let filtered = currentAllSuggestions.filter(sug => {
+              if (budget && sug.budget !== budget) {
+                return false;
+              }
+              if (time && sug.time !== time) {
+                return false;
+              }
+              return true;
+            });
+
+            if (filtered.length === 0) {
+              const shuffled = [...currentAllSuggestions].sort(() => 0.5 - Math.random());
+              filtered = shuffled.slice(0, 5);
+              setModalContent(language === 'tr' ? "Belirttiğiniz kriterlere uygun özel bir öneri bulunamadı. İşte sizin için birkaç popüler seçenek!" : "No specific suggestions found for your criteria. Here are some popular options for you!");
+              setShowModal(true);
+            } else {
+              const shuffledFiltered = [...filtered].sort(() => 0.5 - Math.random());
+              filtered = shuffledFiltered.slice(0, Math.min(5, shuffledFiltered.length));
+            }
+
+            setSuggestions(filtered);
+            setActiveSuggestionType('food');
+            setGeneratedRecipe(''); 
+            setShowRecipeModal(false);
+          };
+
+          const handleGetDessertSuggestions = () => {
+            let currentAllDessertSuggestions = getSuggestionsData(language).allDessertSuggestions;
+            let filtered = currentAllDessertSuggestions.filter(sug => {
+              if (budget && sug.budget !== budget) {
+                return false;
+              }
+              if (time && sug.time !== time) {
+                return false;
+              }
+              return true;
+            });
+
+            if (filtered.length === 0) {
+              const shuffled = [...currentAllDessertSuggestions].sort(() => 0.5 - Math.random());
+              filtered = shuffled.slice(0, 5);
+              setModalContent(language === 'tr' ? "Belirttiğiniz kriterlere uygun özel bir tatlı önerisi bulunamadı. İşte sizin için birkaç popüler seçenek!" : "No specific dessert suggestions found for your criteria. Here are some popular options for you!");
+              setShowModal(true);
+            } else {
+                const shuffledFiltered = [...filtered].sort(() => 0.5 - Math.random());
+                filtered = shuffledFiltered.slice(0, Math.min(5, shuffledFiltered.length));
+            }
+
+            setSuggestions(filtered);
+            setActiveSuggestionType('dessert');
+            setGeneratedRecipe(''); 
+            setShowRecipeModal(false);
+          };
+
+          const handleViewRecipe = async (foodName) => {
+            if (!foodName) return;
+            setSelectedFoodForRecipe(foodName);
+            setIsGeneratingRecipeView(true);
+            setGeneratedRecipe(''); 
+            setShowRecipeModal(true); 
+
+            const prompt = language === 'tr' ?
+              `Bana "${foodName}" yemeğinin evde yapılabilecek basit bir tarifini ver. Tarifin adı, malzemeler listesi (miktarlarıyla birlikte) ve adım adım yapılışı şeklinde olsun. Başlıkları Markdown formatında kullan (örn: **Yemek Adı**, **Malzemeler**, **Yapılışı**).` :
+              `Give me a simple home-cook recipe for "${foodName}". The response should include the name of the dish, a list of ingredients (with quantities), and step-by-step instructions. Use Markdown for headings (e.g., **Dish Name**, **Ingredients**, **Instructions**).`;
+
+            try {
+              let chatHistory = [];
+              chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+              const payload = { contents: chatHistory };
+              const apiKey = ""; 
+              const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+              const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+
+              if (!response.ok) {
+                const errorResult = await response.json();
+                console.error("API Error for recipe:", errorResult);
+                throw new Error(language === 'tr' ? `API Hatası: ${response.status}` : `API Error: ${response.status}`);
+              }
+
+              const result = await response.json();
+              if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
+                const text = result.candidates[0].content.parts[0].text;
+                setGeneratedRecipe(text);
+              } else {
+                setGeneratedRecipe(language === 'tr' ? "Tarif alınırken bir sorun oluştu. Lütfen tekrar deneyin." : "There was a problem getting the recipe. Please try again.");
+              }
+            } catch (error) {
+              console.error("Tarif alma hatası:", error);
+              setGeneratedRecipe(language === 'tr' ? `Tarif alınırken bir hata oluştu: ${error.message}` : `An error occurred while getting the recipe: ${error.message}`);
+            } finally {
+              setIsGeneratingRecipeView(false);
+            }
+          };
+
+
+          return (
+            <div className="flex flex-col items-center p-4 sm:p-6 bg-white/80 backdrop-blur-sm rounded-xl shadow-xl animate-fade-in-up">
+              <h2 className="text-2xl sm:text-3xl font-bold text-orange-600 mb-2">{language === 'tr' ? 'Hızlı Seçim (Evde)' : 'Quick Selection (At Home)'}</h2>
+              <p className="text-gray-700 mb-6 text-center text-sm sm:text-base">
+                {language === 'tr' ? 'Aşağıdaki filtreleri kullanarak veya doğrudan butonlara tıklayarak öneri alabilirsiniz.' : 'You can get suggestions using the filters below or by clicking the buttons directly.'}
+              </p>
+
+              {/* Bütçe */}
+              <div className="mb-6 w-full max-w-md">
+                <label className="block text-gray-700 text-lg font-semibold mb-3">{language === 'tr' ? 'Bütçen ne kadar?' : 'What is your budget?'}</label>
+                <div className="flex flex-wrap justify-center gap-3">
+                  {['0-150 TL', '150-300 TL', '300+ TL'].map(b => ( 
+                    <button
+                      key={b}
+                      onClick={() => setBudget(b)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out transform hover:scale-105 shadow-sm hover:shadow-md
+                        ${budget === b ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-green-100 hover:text-green-700'}`}
+                    >
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Süre */}
+              <div className="mb-8 w-full max-w-md">
+                <label className="block text-gray-700 text-lg font-semibold mb-3">{language === 'tr' ? 'Ne kadar süren var?' : 'How much time do you have?'}</label>
+                <div className="flex flex-wrap justify-center gap-3">
+                  {['5-15 dk', '15-30 dk', '30+ dk'].map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setTime(t)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out transform hover:scale-105 shadow-sm hover:shadow-md
+                        ${time === t ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-red-100 hover:text-red-700'}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center gap-4 mb-8 w-full max-w-md">
+                <button
+                  onClick={handleGetSuggestions}
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white px-8 py-4 rounded-full text-xl font-bold shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95"
+                >
+                  {language === 'tr' ? 'Yemek Önerisi Al!' : 'Get Food Suggestions!'}
+                </button>
+
+                <button
+                  onClick={handleGetDessertSuggestions}
+                  className="w-full bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-8 py-4 rounded-full text-xl font-bold shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95"
+                >
+                  {language === 'tr' ? 'Tatlı Önerileri Al!' : 'Get Dessert Suggestions!'}
+                </button>
+              </div>
+
+              {activeSuggestionType === 'food' && suggestions.length > 0 && (
+                <div className="mt-8 w-full max-w-md md:max-w-2xl lg:max-w-3xl bg-orange-50 p-4 sm:p-6 rounded-lg shadow-inner border border-orange-200 animate-fade-in-up">
+                  <h3 className="text-xl sm:text-2xl font-bold text-orange-700 mb-4 text-center">{language === 'tr' ? 'Yemek Önerileri' : 'Food Suggestions'}</h3>
+                  <div className="flex overflow-x-auto snap-x snap-mandatory space-x-4 pb-4 scrollbar-thin scrollbar-thumb-orange-300 scrollbar-track-orange-100">
+                    {suggestions.map((sug, index) => (
+                      <div key={index} className="flex-shrink-0 w-72 sm:w-80 md:w-96 snap-center bg-white p-4 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col items-start gap-2">
+                        <span className="text-lg sm:text-xl font-bold text-gray-800">{sug.name}</span>
+                        <p className="text-xs sm:text-sm text-gray-600">({sug.time}, {sug.budget})</p>
+                        <p className="text-sm sm:text-base text-gray-700 mb-2">{sug.description}</p>
+                        <button
+                          onClick={() => handleViewRecipe(sug.name)}
+                          className="mt-auto bg-orange-500 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-orange-600 transition-colors self-start"
+                          disabled={isGeneratingRecipeView && selectedFoodForRecipe === sug.name}
+                        >
+                          {isGeneratingRecipeView && selectedFoodForRecipe === sug.name ? (language === 'tr' ? 'Yükleniyor...' : 'Loading...') : (language === 'tr' ? 'Tarife Bak' : 'View Recipe')}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeSuggestionType === 'dessert' && suggestions.length > 0 && (
+                <div className="mt-8 w-full max-w-md md:max-w-2xl lg:max-w-3xl bg-yellow-50 p-4 sm:p-6 rounded-lg shadow-inner border border-yellow-200 animate-fade-in-up">
+                  <h3 className="text-xl sm:text-2xl font-bold text-yellow-700 mb-4 text-center">
+                    {language === 'tr' ? 'Tatlı Önerileri 🍰' : 'Dessert Suggestions 🍰'}
+                  </h3>
+                  <div className="flex overflow-x-auto snap-x snap-mandatory space-x-4 pb-4 scrollbar-thin scrollbar-thumb-yellow-300 scrollbar-track-yellow-100">
+                    {suggestions.map((sug, index) => (
+                      <div key={index} className="flex-shrink-0 w-72 sm:w-80 md:w-96 snap-center bg-white p-4 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col items-start gap-2">
+                        <span className="text-lg sm:text-xl font-bold text-gray-800">{sug.name}</span>
+                        <p className="text-xs sm:text-sm text-gray-600">({sug.time}, {sug.budget})</p>
+                        <p className="text-sm sm:text-base text-gray-700 mb-2">{sug.description}</p>
+                         <button
+                          onClick={() => handleViewRecipe(sug.name)}
+                          className="mt-auto bg-yellow-500 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-yellow-600 transition-colors self-start"
+                          disabled={isGeneratingRecipeView && selectedFoodForRecipe === sug.name}
+                        >
+                          {isGeneratingRecipeView && selectedFoodForRecipe === sug.name ? (language === 'tr' ? 'Yükleniyor...' : 'Loading...') : (language === 'tr' ? 'Tarife Bak' : 'View Recipe')}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {activeSuggestionType && suggestions.length === 0 && !showModal && (
+                 <div className="mt-8 w-full max-w-md text-center p-4 bg-gray-100 rounded-lg animate-fade-in">
+                    <p className="text-gray-600">
+                        {language === 'tr' ? 'Bu kriterlere uygun öneri bulunamadı.' : 'No suggestions found for these criteria.'}
+                    </p>
+                 </div>
+              )}
+
+              {/* Genel Mesaj Modalı */}
+              {showModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+                  <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center animate-fade-in-up">
+                    <p className="text-lg font-semibold text-gray-800 mb-4">{modalContent}</p>
+                    <button
+                      onClick={() => setShowModal(false)}
+                      className="bg-orange-500 text-white px-5 py-2 rounded-md hover:bg-orange-600 transition-colors"
+                    >
+                      {language === 'tr' ? 'Tamam' : 'OK'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Tarif Görüntüleme Modalı */}
+              {showRecipeModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-fade-in">
+                  <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full text-left max-h-[80vh] overflow-y-auto animate-fade-in-up">
+                    <h3 className="text-2xl font-bold text-orange-600 mb-4">
+                        {selectedFoodForRecipe} {language === 'tr' ? ' Tarifi' : ' Recipe'}
+                    </h3>
+                    {isGeneratingRecipeView ? (
+                        <div className="flex justify-center items-center h-40">
+                            <svg className="animate-spin h-8 w-8 text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <p className="ml-3 text-gray-600">{language === 'tr' ? 'Tarif yükleniyor...' : 'Loading recipe...'}</p>
+                        </div>
+                    ) : (
+                        <div className="prose prose-sm sm:prose-base max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: generatedRecipe.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>') }} />
+                    )}
+                    <button
+                      onClick={() => {
+                        setShowRecipeModal(false);
+                        setGeneratedRecipe(''); 
+                        setSelectedFoodForRecipe(null);
+                      }}
+                      className="mt-6 bg-orange-500 text-white px-5 py-2 rounded-md hover:bg-orange-600 transition-colors"
+                    >
+                      {language === 'tr' ? 'Kapat' : 'Close'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        // SmartAssistantPage Bileşeni
+        const SmartAssistantPage = ({ language }) => {
+          const [ingredients, setIngredients] = useState('');
+          const [generatedRecipe, setGeneratedRecipe] = useState('');
+          const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false);
+
+          const [foodNameForSubstitution, setFoodNameForSubstitution] = useState('');
+          const [oldIngredient, setOldIngredient] = useState('');
+          const [suggestedSubstitutions, setSuggestedSubstitutions] = useState('');
+          const [isSuggestingSubstitution, setIsSuggestingSubstitution] = useState(false);
+
+          const [theme, setTheme] = useState('');
+          const [mealIdeasByTheme, setMealIdeasByTheme] = useState('');
+          const [isGeneratingMealIdeas, setIsGeneratingMealIdeas] = useState(false);
+
+          const [showModal, setShowModal] = useState(false);
+          const [modalContent, setModalContent] = useState('');
+
+          // Malzemelerle tarif oluşturma fonksiyonu
+          const generateRecipeFromIngredients = async () => {
+            if (!ingredients.trim()) {
+              setModalContent(language === 'tr' ? "Lütfen tarif oluşturmak için malzemeleri girin." : "Please enter ingredients to generate a recipe.");
+              setShowModal(true);
+              return;
+            }
+
+            setIsGeneratingRecipe(true);
+            setGeneratedRecipe('');
+
+            const prompt = language === 'tr' ?
+                `Şu malzemelerle hazırlanabilecek bir yemek tarifi öner: ${ingredients}. Tarifin adı, malzemeler listesi (miktarlarıyla) ve adım adım yapılışı şeklinde olsun. Başlıkları Markdown formatında kullan (örn: **Yemek Adı**, **Malzemeler**, **Yapılışı**).` :
+                `Suggest a recipe that can be prepared with the following ingredients: ${ingredients}. The response should include the name of the dish, a list of ingredients (with quantities), and step-by-step instructions. Use Markdown for headings (e.g., **Dish Name**, **Ingredients**, **Instructions**).`;
+
+
+            try {
+              let chatHistory = [];
+              chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+              const payload = { contents: chatHistory };
+              const apiKey = ""; 
+              const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+              const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+
+              if (!response.ok) {
+                const errorResult = await response.json();
+                console.error("API Error:", errorResult);
+                throw new Error(language === 'tr' ? `API Hatası: ${response.status}` : `API Error: ${response.status}`);
+              }
+
+              const result = await response.json();
+              if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
+                const text = result.candidates[0].content.parts[0].text;
+                setGeneratedRecipe(text);
+              } else {
+                setModalContent(language === 'tr' ? "Tarif oluşturulurken bir sorun oluştu. Lütfen tekrar deneyin." : "There was a problem generating the recipe. Please try again.");
+                setShowModal(true);
+              }
+            } catch (error) {
+              console.error("Tarif oluşturma hatası:", error);
+              setModalContent(language === 'tr' ? `Tarif oluşturulurken bir hata oluştu: ${error.message}` : `An error occurred while generating the recipe: ${error.message}`);
+              setShowModal(true);
+            } finally {
+              setIsGeneratingRecipe(false);
+            }
+          };
+
+          // Malzeme değişikliği önerme fonksiyonu
+          const suggestIngredientSubstitution = async () => {
+            if (!foodNameForSubstitution.trim() || !oldIngredient.trim()) {
+              setModalContent(language === 'tr' ? "Lütfen yemek adını ve değiştirmek istediğiniz malzemeyi girin." : "Please enter the food name and the ingredient you want to substitute.");
+              setShowModal(true);
+              return;
+            }
+
+            setIsSuggestingSubstitution(true);
+            setSuggestedSubstitutions('');
+
+            const prompt = language === 'tr' ?
+                `Bana '${foodNameForSubstitution}' yemeğindeki '${oldIngredient}' yerine kullanabileceğim 3-5 tane alternatif malzeme öner. Sadece alternatifleri virgülle ayırarak listele.` :
+                `Suggest 3-5 alternative ingredients I can use instead of '${oldIngredient}' in the dish '${foodNameForSubstitution}'. List only the alternatives, separated by commas.`;
+
+
+            try {
+              let chatHistory = [];
+              chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+              const payload = { contents: chatHistory };
+              const apiKey = ""; 
+              const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+              const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+              
+              if (!response.ok) {
+                const errorResult = await response.json();
+                console.error("API Error:", errorResult);
+                throw new Error(language === 'tr' ? `API Hatası: ${response.status}` : `API Error: ${response.status}`);
+              }
+
+              const result = await response.json();
+              if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
+                const text = result.candidates[0].content.parts[0].text;
+                setSuggestedSubstitutions(text);
+              } else {
+                setModalContent(language === 'tr' ? "Malzeme değişimi önerilirken bir sorun oluştu. Lütfen tekrar deneyin." : "There was a problem suggesting ingredient substitutions. Please try again.");
+                setShowModal(true);
+              }
+            } catch (error) {
+              console.error("Malzeme değişimi önerisi hatası:", error);
+              setModalContent(language === 'tr' ? `Malzeme değişimi önerilirken bir hata oluştu: ${error.message}` : `An error occurred while suggesting ingredient substitutions: ${error.message}`);
+              setShowModal(true);
+            } finally {
+              setIsSuggestingSubstitution(false);
+            }
+          };
+
+          // Temaya göre yemek fikri alma fonksiyonu
+          const getMealIdeaByTheme = async () => {
+            if (!theme.trim()) {
+              setModalContent(language === 'tr' ? "Lütfen bir tema girin." : "Please enter a theme.");
+              setShowModal(true);
+              return;
+            }
+
+            setIsGeneratingMealIdeas(true);
+            setMealIdeasByTheme('');
+
+            const prompt = language === 'tr' ?
+                `Bana '${theme}' temasına uygun 3-5 tane yemek fikri öner. Her bir fikri kısa bir açıklama ile sun. Fikirleri Markdown listesi olarak formatla.` :
+                `Suggest 3-5 meal ideas suitable for the theme '${theme}'. Present each idea with a brief description. Format the ideas as a Markdown list.`;
+
+            try {
+              let chatHistory = [];
+              chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+              const payload = { contents: chatHistory };
+              const apiKey = ""; 
+              const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+              const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+
+              if (!response.ok) {
+                const errorResult = await response.json();
+                console.error("API Error:", errorResult);
+                throw new Error(language === 'tr' ? `API Hatası: ${response.status}` : `API Error: ${response.status}`);
+              }
+
+              const result = await response.json();
+              if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
+                const text = result.candidates[0].content.parts[0].text;
+                setMealIdeasByTheme(text);
+              } else {
+                setModalContent(language === 'tr' ? "Yemek fikirleri oluşturulurken bir sorun oluştu. Lütfen tekrar deneyin." : "There was a problem generating meal ideas. Please try again.");
+                setShowModal(true);
+              }
+            } catch (error) {
+              console.error("Yemek fikri oluşturma hatası:", error);
+              setModalContent(language === 'tr' ? `Yemek fikirleri oluşturulurken bir hata oluştu: ${error.message}` : `An error occurred while generating meal ideas: ${error.message}`);
+              setShowModal(true);
+            } finally {
+              setIsGeneratingMealIdeas(false);
+            }
+          };
+
+
+          return (
+            <div className="flex flex-col items-center p-4 sm:p-6 bg-white/80 backdrop-blur-sm rounded-xl shadow-xl animate-fade-in-up">
+              <h2 className="text-2xl sm:text-3xl font-bold text-orange-600 mb-6">{language === 'tr' ? 'Akıllı Asistan ✨' : 'Smart Assistant ✨'}</h2>
+
+              <div className="mb-8 w-full max-w-md bg-green-50/70 backdrop-blur-sm p-4 sm:p-6 rounded-lg shadow-lg border border-green-200/50">
+                <h3 className="text-xl sm:text-2xl font-bold text-green-700 mb-4 text-center">{language === 'tr' ? 'Malzemelerle Tarif Oluştur' : 'Generate Recipe with Ingredients'}</h3>
+                <label htmlFor="ingredientsInput" className="block text-gray-700 text-lg font-semibold mb-3">
+                  {language === 'tr' ? 'Elinizdeki malzemeler:' : 'Ingredients you have:'}
+                </label>
+                <input
+                  type="text"
+                  id="ingredientsInput"
+                  value={ingredients}
+                  onChange={(e) => setIngredients(e.target.value)}
+                  placeholder={language === 'tr' ? "örn: domates, yumurta, soğan" : "e.g., tomato, egg, onion"}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 mb-4 shadow-sm"
+                />
+                <button
+                  onClick={generateRecipeFromIngredients}
+                  className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white px-8 py-4 rounded-full text-lg sm:text-xl font-bold shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95 flex items-center justify-center"
+                  disabled={isGeneratingRecipe}
+                >
+                  {isGeneratingRecipe ? (
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    (language === 'tr' ? 'Tarif Oluştur ✨' : 'Generate Recipe ✨')
+                  )}
+                </button>
+                {generatedRecipe && (
+                  <div className="mt-6 p-4 bg-yellow-50/70 backdrop-blur-sm rounded-lg border border-yellow-200/50 shadow-md">
+                    <h4 className="text-lg sm:text-xl font-bold text-yellow-700 mb-2">{language === 'tr' ? 'Oluşturulan Tarif:' : 'Generated Recipe:'}</h4>
+                    <div className="prose prose-sm sm:prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: generatedRecipe.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>') }} />
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-8 w-full max-w-md bg-purple-50/70 backdrop-blur-sm p-4 sm:p-6 rounded-lg shadow-lg border border-purple-200/50">
+                <h3 className="text-xl sm:text-2xl font-bold text-purple-700 mb-4 text-center">{language === 'tr' ? 'Malzeme Değişikliği Öner' : 'Suggest Ingredient Substitution'}</h3>
+                <label htmlFor="foodNameSubInput" className="block text-gray-700 text-lg font-semibold mb-3">
+                  {language === 'tr' ? 'Yemek Adı:' : 'Food Name:'}
+                </label>
+                <input
+                  type="text"
+                  id="foodNameSubInput"
+                  value={foodNameForSubstitution}
+                  onChange={(e) => setFoodNameForSubstitution(e.target.value)}
+                  placeholder={language === 'tr' ? "örn: Lazanya" : "e.g., Lasagna"}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 mb-3 shadow-sm"
+                />
+                <label htmlFor="oldIngredientInput" className="block text-gray-700 text-lg font-semibold mb-3">
+                  {language === 'tr' ? 'Değiştirilecek Malzeme:' : 'Ingredient to Substitute:'}
+                </label>
+                <input
+                  type="text"
+                  id="oldIngredientInput"
+                  value={oldIngredient}
+                  onChange={(e) => setOldIngredient(e.target.value)}
+                  placeholder={language === 'tr' ? "örn: Parmesan Peyniri" : "e.g., Parmesan Cheese"}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 mb-4 shadow-sm"
+                />
+                <button
+                  onClick={suggestIngredientSubstitution}
+                  className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white px-8 py-4 rounded-full text-lg sm:text-xl font-bold shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95 flex items-center justify-center"
+                  disabled={isSuggestingSubstitution}
+                >
+                  {isSuggestingSubstitution ? (
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    (language === 'tr' ? 'Alternatif Öner ✨' : 'Suggest Alternative ✨')
+                  )}
+                </button>
+                {suggestedSubstitutions && (
+                  <div className="mt-6 p-4 bg-yellow-50/70 backdrop-blur-sm rounded-lg border border-yellow-200/50 shadow-md">
+                    <h4 className="text-lg sm:text-xl font-bold text-yellow-700 mb-2">{language === 'tr' ? 'Önerilen Alternatifler:' : 'Suggested Alternatives:'}</h4>
+                    <p className="text-gray-700">{suggestedSubstitutions}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-8 w-full max-w-md bg-red-50/70 backdrop-blur-sm p-4 sm:p-6 rounded-lg shadow-lg border border-red-200/50">
+                <h3 className="text-xl sm:text-2xl font-bold text-red-700 mb-4 text-center">{language === 'tr' ? 'Temaya Göre Yemek Fikri Al' : 'Get Meal Idea by Theme'}</h3>
+                <label htmlFor="themeInput" className="block text-gray-700 text-lg font-semibold mb-3">
+                  {language === 'tr' ? 'Tema (örn: Romantik Akşam Yemeği, Hızlı Öğle Yemeği):' : 'Theme (e.g., Romantic Dinner, Quick Lunch):'}
+                </label>
+                <input
+                  type="text"
+                  id="themeInput"
+                  value={theme}
+                  onChange={(e) => setTheme(e.target.value)}
+                  placeholder={language === 'tr' ? "örn: Sağlıklı ve Hafif" : "e.g., Healthy and Light"}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 mb-4 shadow-sm"
+                />
+                <button
+                  onClick={getMealIdeaByTheme}
+                  className="w-full bg-gradient-to-r from-red-500 to-orange-500 text-white px-8 py-4 rounded-full text-lg sm:text-xl font-bold shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95 flex items-center justify-center"
+                  disabled={isGeneratingMealIdeas}
+                >
+                  {isGeneratingMealIdeas ? (
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    (language === 'tr' ? 'Fikir Al ✨' : 'Get Ideas ✨')
+                  )}
+                </button>
+                {mealIdeasByTheme && (
+                  <div className="mt-6 p-4 bg-yellow-50/70 backdrop-blur-sm rounded-lg border border-yellow-200/50 shadow-md">
+                    <h4 className="text-lg sm:text-xl font-bold text-yellow-700 mb-2">{language === 'tr' ? 'Yemek Fikirleri:' : 'Meal Ideas:'}</h4>
+                    <div className="prose prose-sm sm:prose max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: mealIdeasByTheme.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>') }} />
+                  </div>
+                )}
+              </div>
+
+              {showModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+                  <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center animate-fade-in-up">
+                    <p className="text-lg font-semibold text-gray-800 mb-4">{modalContent}</p>
+                    <button
+                      onClick={() => setShowModal(false)}
+                      className="bg-orange-500 text-white px-5 py-2 rounded-md hover:bg-orange-600 transition-colors"
+                    >
+                      {language === 'tr' ? 'Tamam' : 'OK'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        // Uygulamayı FirebaseProvider ile sarmala
+        const WrappedApp = () => (
+            <FirebaseProvider>
+                <App />
+            </FirebaseProvider>
+        );
+
+        ReactDOM.render(<WrappedApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
+ 
